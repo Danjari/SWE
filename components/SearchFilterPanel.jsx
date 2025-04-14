@@ -56,19 +56,25 @@ export function SearchFilterPanel() {
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFilters(prev => ({ ...prev, [name]: value }))
+    
+    // For search input, don't apply immediately to prevent excessive queries while typing
+    if (name !== 'q') {
+      applyFilters({ ...filters, [name]: value })
+    }
   }
   
   // Handle select changes
   const handleSelectChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }))
+    applyFilters({ ...filters, [name]: value })
   }
 
   // Apply filters
-  const applyFilters = () => {
+  const applyFilters = (filterValues = filters) => {
     const params = new URLSearchParams()
     
     // Only add parameters that have values and aren't default values
-    Object.entries(filters).forEach(([key, value]) => {
+    Object.entries(filterValues).forEach(([key, value]) => {
       if (value !== '') {
         if ((key === 'category' && value === 'all') || 
             (key === 'condition' && value === 'any') || 
@@ -94,7 +100,7 @@ export function SearchFilterPanel() {
     })
     
     // Update the URL with the filters
-    router.push(`/listings?${params.toString()}`)
+    router.push(`/listings?${params.toString()}`, { scroll: false })
   }
 
   // Handle Enter key in the search input
