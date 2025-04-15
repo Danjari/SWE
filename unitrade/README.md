@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# UniTrade - University Marketplace
+
+UniTrade is a modern web application built with Next.js and Supabase that allows university students to buy and sell items within their campus community.
+
+## Features
+
+- **User Authentication**: Secure login, signup, and password recovery
+- **Listing Management**: Create, view, and manage product listings
+- **Product Details**: View comprehensive information about products
+- **Buy Requests**: Send purchase requests to sellers
+- **Messaging**: Chat with sellers about products (coming soon)
+
+## Technology Stack
+
+- **Frontend**: Next.js 15.3, React 19, Tailwind CSS
+- **Backend**: Supabase (Authentication, Database, Storage)
+- **UI Components**: Radix UI, shadcn/ui
+- **Deployment**: Vercel (recommended)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18+ and npm/yarn
+- Supabase account and project
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/unitrade.git
+   cd unitrade
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-## Learn More
+3. Set up environment variables:
+   Create a `.env.local` file with the following variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Run the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database Setup
 
-## Deploy on Vercel
+1. Create a new Supabase project
+2. Run the SQL scripts in `lib/db/schema.sql` in the Supabase SQL editor
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Features Guide
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Buying Products
+
+1. Browse listings on the main listings page
+2. Click on a product's "View Details" button to see comprehensive information
+3. On the product details page, click "Buy Now" to express interest
+4. Fill in your contact information and a message to the seller
+5. Submit your purchase request
+6. The seller will receive your request and can contact you directly
+
+### Selling Products
+
+1. Navigate to the listings page
+2. Click "Add New Listing"
+3. Fill in the product details including title, description, price, category, and condition
+4. Submit the listing
+5. Your listing will immediately appear on the marketplace
+
+## Project Structure
+
+- `/app`: Next.js application routes and pages
+- `/components`: Reusable React components
+- `/hooks`: Custom React hooks
+- `/lib`: Utility functions and services
+- `/public`: Static assets
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contact
+
+If you have any questions or feedback, please reach out to [your-email@example.com]

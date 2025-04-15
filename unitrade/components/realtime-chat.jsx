@@ -14,15 +14,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
  * @param username - The username of the user
  * @param onMessage - The callback function to handle the messages. Useful if you want to store the messages in a database.
  * @param messages - The messages to display in the chat. Useful if you want to display messages from a database.
+ * @param initialMessage - The initial message to send when the chat is initialized.
+ * @param hasInitialized - A flag to indicate if the chat has been initialized.
+ * @param onInitialized - The callback function to call when the chat is initialized.
  * @returns The chat component
  */
 export const RealtimeChat = ({
   roomName,
   username,
   onMessage,
-  messages: initialMessages = []
+  messages: initialMessages = [],
+  initialMessage = null,
+  hasInitialized = false,
+  onInitialized = () => {}
 }) => {
   const { containerRef, scrollToBottom } = useChatScroll()
+  const [initialMessageSent, setInitialMessageSent] = useState(false)
 
   const {
     messages: realtimeMessages,
@@ -32,7 +39,7 @@ export const RealtimeChat = ({
     roomName,
     username,
   })
-  const [newMessage, setNewMessage] = useState('')
+  const [newMessage, setNewMessage] = useState(initialMessage || '')
 
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
@@ -58,6 +65,22 @@ export const RealtimeChat = ({
     scrollToBottom()
   }, [allMessages, scrollToBottom])
 
+  // Send initial message if provided
+  useEffect(() => {
+    if (initialMessage && isConnected && !initialMessageSent && hasInitialized) {
+      sendMessage(initialMessage)
+      setInitialMessageSent(true)
+      setNewMessage('')
+    }
+  }, [initialMessage, isConnected, initialMessageSent, hasInitialized, sendMessage])
+
+  // Mark chat as initialized
+  useEffect(() => {
+    if (isConnected && !hasInitialized) {
+      onInitialized()
+    }
+  }, [isConnected, hasInitialized, onInitialized])
+
   const handleSendMessage = useCallback((e) => {
     e.preventDefault()
     if (!newMessage.trim() || !isConnected) return
@@ -65,6 +88,51 @@ export const RealtimeChat = ({
     sendMessage(newMessage)
     setNewMessage('')
   }, [newMessage, isConnected, sendMessage])
+
+  const formatMessage = (message) => {
+    // Check if the message contains purchase request indicators
+    if (message.content && message.content.includes('PURCHASE REQUEST:')) {
+      // Extract sections for better formatting
+      const lines = message.content.split('\n');
+      const title = lines[0];
+      const sections = [];
+      let currentSection = '';
+      
+      // Process each line to create sections
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes('──────────────')) {
+          if (currentSection) {
+            sections.push(currentSection);
+            currentSection = '';
+          }
+        } else {
+          currentSection += line + '\n';
+        }
+      }
+      
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      
+      return (
+        <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+          <div className="font-semibold text-primary mb-3">{title}</div>
+          <div className="space-y-3">
+            <div className="text-sm font-medium whitespace-pre-line">{sections[0]}</div>
+            {sections[1] && (
+              <div className="mt-3 pt-3 border-t border-primary/20">
+                <div className="text-sm whitespace-pre-line">{sections[1]}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    // Default formatting for regular messages
+    return message.content;
+  }
 
   return (
     (<div
@@ -86,7 +154,10 @@ export const RealtimeChat = ({
                 key={message.id}
                 className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <ChatMessageItem
-                  message={message}
+                  message={{
+                    ...message,
+                    content: formatMessage(message)
+                  }}
                   isOwnMessage={message.user.name === username}
                   showHeader={showHeader} />
               </div>)

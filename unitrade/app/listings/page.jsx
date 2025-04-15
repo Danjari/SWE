@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRouter } from 'next/navigation'
 
 const CATEGORY_OPTIONS = ['Books', 'Electronics', 'Clothing', 'Other']
 
@@ -24,6 +25,7 @@ export default function ListingsPage() {
   const [userId, setUserId] = useState(null)
   const [userEmail,setUserEmail] = useState(null)
   const [userCreatedAt,setUserCreatedAt] =useState(null)
+  const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
@@ -86,12 +88,16 @@ export default function ListingsPage() {
     }
   }
 
+  const navigateToProductDetail = (listingId) => {
+    router.push(`/listings/${listingId}`)
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">My Listings</h1>
-          <p className="text-muted-foreground mt-1">Manage your product listings</p>
+          <h1 className="text-3xl font-bold">All Listings</h1>
+          <p className="text-muted-foreground mt-1">Browse and buy products from the community</p>
         </div>
         <Dialog open={openForm} onOpenChange={setOpenForm}>
           <DialogTrigger asChild>
@@ -148,29 +154,32 @@ export default function ListingsPage() {
           ) : listings.length === 0 ? (
             <p>No listings found.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="p-2 border">Title</th>
-                    <th className="p-2 border">Price</th>
-                    <th className="p-2 border">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listings.map((listing) => (
-                    <tr
-                      key={listing.id}
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => setSelectedListing(listing)}
-                    >
-                      <td className="p-2 border">{listing.title}</td>
-                      <td className="p-2 border">${listing.price}</td>
-                      <td className="p-2 border">{listing.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map((listing) => (
+                <Card key={listing.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl">{listing.title}</CardTitle>
+                    <CardDescription className="font-semibold text-primary">${listing.price}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm line-clamp-2 text-muted-foreground">
+                      {listing.description}
+                    </p>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="text-sm text-muted-foreground">
+                        {listing.category} • {listing.condition}
+                      </div>
+                      <Button 
+                        onClick={() => navigateToProductDetail(listing.id)}
+                        variant="default"
+                        size="sm"
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
        
@@ -189,8 +198,9 @@ export default function ListingsPage() {
                 <p><strong>Category:</strong> {selectedListing.category}</p>
                 <p><strong>Condition:</strong> {selectedListing.condition}</p>
                 <div className="mt-4 flex gap-2">
-                  <Button variant="outline">Mark as Sold</Button>
-                  <Button variant="destructive">Delete</Button>
+                  <Button variant="outline" onClick={() => navigateToProductDetail(selectedListing.id)}>
+                    View Details
+                  </Button>
                 </div>
               </div>
             </>
