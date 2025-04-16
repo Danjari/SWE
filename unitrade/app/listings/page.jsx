@@ -35,9 +35,10 @@ import {
   Package,
   Check
 } from 'lucide-react'
+import AddListingForm from '@/components/addListingForm'
 
 const CATEGORY_OPTIONS = ['Books', 'Electronics', 'Clothing', 'Other']
-const CONDITION_OPTIONS = ['Any', 'old', 'used']
+const CONDITION_OPTIONS = ['Any', 'new', 'used']
 const DATE_POSTED_OPTIONS = [
   { value: '1', label: 'Last 24 hours' },
   { value: '7', label: 'Last 7 days' },
@@ -221,39 +222,7 @@ export default function ListingsPage() {
     )
   }
 
-  const handleAddListing = async (e) => {
-    e.preventDefault()
-    const supabase = createClient()
-    const {error: userInsertError } = await supabase.from('users').upsert({
-        id: userId,
-        email: userEmail,
-        created_at: userCreatedAt,
-        // add any other default fields
-      })
-      if(userInsertError){
-        console.log("error Upsert: ", userInsertError.message)
-        return
-      }
-
-    const payload = {
-      ...newListing,
-      price: parseFloat(newListing.price),
-      seller_id: userId,
-      status: 'active',
-      contact_email: userEmail,
-    }
-    
-    const { data, error } = await supabase.from('listings').insert(payload).select().single()
-
-    if (error) {
-      alert('Error creating listing: ' + error.message)
-    } else {
-      setListings([data, ...listings])
-      setFilteredListings([data, ...filteredListings])
-      setNewListing({ title: '', description: '', price: '', category: '', condition: '' })
-      setOpenForm(false)
-    }
-  }
+  
 
   const navigateToProductDetail = (listingId) => {
     router.push(`/listings/${listingId}`)
@@ -459,67 +428,12 @@ export default function ListingsPage() {
               </Badge>
             )}
           </Button>
-          <Dialog open={openForm} onOpenChange={setOpenForm}>
-            <DialogTrigger asChild>
-              <Button>Add New Listing</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Listing</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddListing} className="grid gap-4 mt-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input id="title" value={newListing.title} onChange={(e) => setNewListing({ ...newListing, title: e.target.value })} required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input id="description" value={newListing.description} onChange={(e) => setNewListing({ ...newListing, description: e.target.value })} required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="price">Price</Label>
-                  <Input id="price" type="number" step="0.01" value={newListing.price} onChange={(e) => setNewListing({ ...newListing, price: e.target.value })} required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={newListing.category}
-                    onValueChange={(value) => setNewListing({ ...newListing, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="condition">Condition</Label>
-                  <Select
-                    value={newListing.condition}
-                    onValueChange={(value) => setNewListing({ ...newListing, condition: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select condition" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONDITION_OPTIONS.filter(c => c !== 'Any').map((condition) => (
-                        <SelectItem key={condition} value={condition}>
-                          {condition}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" disabled={!userId}>Create Listing</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <AddListingForm
+            userId={userId}
+            userEmail={userEmail}
+            userCreatedAt={userCreatedAt}
+            onListingCreated={(newItem) => setListings(prev => [newItem, ...prev])}
+          />
         </div>
       </div>
 
