@@ -241,6 +241,20 @@ ${buyerMessage}
             </CardHeader>
             
             <CardContent className="pt-6">
+            {product.image_url ? (
+              <div className="w-full flex justify-center items-center bg-muted rounded-lg border p-2 mb-6">
+                <img
+                  src={product.image_url}
+                  alt={product.title}
+                  className="max-h-[400px] w-auto object-contain rounded-md"
+                />
+              </div>
+            ) : (
+              <div className="w-full aspect-video flex items-center justify-center text-sm text-muted-foreground bg-muted rounded-lg border mb-6">
+                No image available
+              </div>
+            )}
+
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 mb-4">
                   <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-lg">
