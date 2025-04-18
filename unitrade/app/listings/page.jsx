@@ -125,8 +125,8 @@ export default function ListingsPage() {
   useEffect(() => {
     applyFilters()
   }, [searchQuery, selectedCategories, priceRange, selectedCondition, datePosted, sortBy])
-  
   useEffect(() => {
+    // random code 
     // Calculate active filter count
     let count = 0
     if (searchQuery) count++
