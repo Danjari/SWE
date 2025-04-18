@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/use-auth'
-import { Calendar, DollarSign, Clock, MapPin, CreditCard, MessageSquare, Tag, Package, User, Calendar as CalendarIcon, Info } from 'lucide-react'
+import { Calendar, DollarSign, Clock, MapPin, CreditCard, MessageSquare, Tag, Package, User, Calendar as CalendarIcon, Info, AlertCircle } from 'lucide-react'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -29,6 +29,24 @@ export default function ProductDetailPage() {
   const [sendEmail, setSendEmail] = useState(true)
   const [sellerData, setSellerData] = useState(null)
   const { user } = useAuth() || { user: null }
+  
+  // Form validation states
+  const [errors, setErrors] = useState({
+    buyerMessage: false,
+    contactInfo: false,
+    pickupTime: false,
+    pickupLocation: false,
+    paymentMethod: false
+  })
+  const [formSubmitted, setFormSubmitted] = useState(false)
+  const [formValid, setFormValid] = useState(false)
+
+  useEffect(() => {
+    // Check form validity when form fields change and form has been submitted
+    if (formSubmitted) {
+      validateForm()
+    }
+  }, [buyerMessage, contactInfo, pickupTime, pickupLocation, paymentMethod, formSubmitted])
 
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -78,29 +96,18 @@ export default function ProductDetailPage() {
       return
     }
 
-    // Validate required fields
-    if (!buyerMessage.trim()) {
-      alert('Please enter a message for the seller')
-      return
-    }
+    setFormSubmitted(true)
     
-    if (!contactInfo.trim()) {
-      alert('Please provide your contact information')
-      return
-    }
+    // Validate all fields
+    const valid = validateForm()
     
-    if (!pickupTime) {
-      alert('Please select a pickup time')
-      return
-    }
-    
-    if (!pickupLocation) {
-      alert('Please select a pickup location')
-      return
-    }
-    
-    if (!paymentMethod) {
-      alert('Please select a payment method')
+    if (!valid) {
+      // Scroll to the first error field
+      const firstErrorField = Object.entries(errors).find(([_, isError]) => isError)?.[0]
+      if (firstErrorField) {
+        document.getElementById(firstErrorField)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        document.getElementById(firstErrorField)?.focus()
+      }
       return
     }
 
@@ -111,8 +118,8 @@ export default function ProductDetailPage() {
 ──────────────────────────────────────────────────
 👤 Buyer: ${user.email}
 🕒 Pickup: ${new Date(pickupTime).toLocaleString()}
-📍 Location: ${pickupLocation}
-💳 Payment: ${paymentMethod}
+📍 Location: ${getLocationDisplayName(pickupLocation)}
+💳 Payment: ${getPaymentDisplayName(paymentMethod)}
 📱 Contact: ${contactInfo}
 ──────────────────────────────────────────────────
 💬 Message:
@@ -129,6 +136,21 @@ ${buyerMessage}
       console.error('Error preparing purchase request:', error)
       alert('Failed to prepare purchase request: ' + (error.message || 'Unknown error'))
     }
+  }
+  
+  const validateForm = () => {
+    const newErrors = {
+      buyerMessage: !buyerMessage.trim(),
+      contactInfo: !contactInfo.trim(),
+      pickupTime: !pickupTime,
+      pickupLocation: !pickupLocation,
+      paymentMethod: !paymentMethod
+    }
+    
+    setErrors(newErrors)
+    const isValid = !Object.values(newErrors).some(error => error)
+    setFormValid(isValid)
+    return isValid
   }
 
   // Helper function to get location display name
@@ -152,6 +174,19 @@ ${buyerMessage}
       'cash': 'Cash'
     }
     return methods[value] || value
+  }
+
+  // Helper function to render validation error for a field
+  const renderFieldError = (fieldName) => {
+    if (errors[fieldName] && formSubmitted) {
+      return (
+        <div className="text-destructive text-xs flex items-center gap-1 mt-1">
+          <AlertCircle size={12} />
+          <span>This field is required</span>
+        </div>
+      )
+    }
+    return null
   }
 
   if (loading) {
@@ -241,20 +276,6 @@ ${buyerMessage}
             </CardHeader>
             
             <CardContent className="pt-6">
-            {product.image_url ? (
-              <div className="w-full flex justify-center items-center bg-muted rounded-lg border p-2 mb-6">
-                <img
-                  src={product.image_url}
-                  alt={product.title}
-                  className="max-h-[400px] w-auto object-contain rounded-md"
-                />
-              </div>
-            ) : (
-              <div className="w-full aspect-video flex items-center justify-center text-sm text-muted-foreground bg-muted rounded-lg border mb-6">
-                No image available
-              </div>
-            )}
-
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 mb-4">
                   <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-lg">
@@ -421,7 +442,16 @@ ${buyerMessage}
         </div>
       </div>
       
-      <Dialog open={showBuyDialog} onOpenChange={setShowBuyDialog}>
+      <Dialog 
+        open={showBuyDialog} 
+        onOpenChange={(open) => {
+          setShowBuyDialog(open);
+          if (!open) {
+            // Reset validation state when dialog closes
+            setFormSubmitted(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Purchase "{product.title}"</DialogTitle>
@@ -430,55 +460,70 @@ ${buyerMessage}
           
           <div className="grid gap-6 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="message" className="text-base">Message to Seller</Label>
+              <Label htmlFor="buyerMessage" className="text-base flex items-center gap-1">
+                Message to Seller <span className="text-destructive">*</span>
+              </Label>
               <Textarea 
-                id="message" 
-                className="min-h-[100px] resize-none"
+                id="buyerMessage" 
+                className={`min-h-[100px] resize-none ${errors.buyerMessage && formSubmitted ? 'border-destructive' : ''}`}
                 placeholder="Hello, I'm interested in buying this item..."
                 value={buyerMessage}
                 onChange={(e) => setBuyerMessage(e.target.value)}
+                aria-invalid={errors.buyerMessage && formSubmitted}
+                aria-required="true"
               />
+              {renderFieldError('buyerMessage')}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="contact" className="flex items-center gap-1">
+                <Label htmlFor="contactInfo" className="flex items-center gap-1">
                   <MessageSquare size={14} />
-                  Your Contact Information
+                  Your Contact Information <span className="text-destructive">*</span>
                 </Label>
                 <Input 
-                  id="contact" 
+                  id="contactInfo" 
                   placeholder="Phone number or preferred contact method"
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
+                  className={errors.contactInfo && formSubmitted ? 'border-destructive' : ''}
+                  aria-invalid={errors.contactInfo && formSubmitted}
+                  aria-required="true"
                 />
+                {renderFieldError('contactInfo')}
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="time" className="flex items-center gap-1">
+                <Label htmlFor="pickupTime" className="flex items-center gap-1">
                   <Clock size={14} />
-                  Pickup Time
+                  Pickup Time <span className="text-destructive">*</span>
                 </Label>
                 <Input 
-                  id="time" 
+                  id="pickupTime" 
                   type="datetime-local"
                   value={pickupTime}
                   onChange={(e) => setPickupTime(e.target.value)}
+                  className={errors.pickupTime && formSubmitted ? 'border-destructive' : ''}
+                  aria-invalid={errors.pickupTime && formSubmitted}
+                  aria-required="true"
                 />
+                {renderFieldError('pickupTime')}
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="location" className="flex items-center gap-1">
+                <Label htmlFor="pickupLocation" className="flex items-center gap-1">
                   <MapPin size={14} />
-                  Pickup Location
+                  Pickup Location <span className="text-destructive">*</span>
                 </Label>
                 <select
-                  id="location"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  id="pickupLocation"
+                  className={`flex h-10 w-full rounded-md border ${errors.pickupLocation && formSubmitted ? 'border-destructive' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                   value={pickupLocation}
                   onChange={(e) => setPickupLocation(e.target.value)}
+                  aria-invalid={errors.pickupLocation && formSubmitted}
+                  aria-required="true"
                 >
                   <option value="">Select a location</option>
                   <option value="baraha">Baraha</option>
@@ -488,24 +533,28 @@ ${buyerMessage}
                   <option value="welcome_centre">Welcome Centre</option>
                   <option value="convenience_store">Convenience Store</option>
                 </select>
+                {renderFieldError('pickupLocation')}
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="payment" className="flex items-center gap-1">
+                <Label htmlFor="paymentMethod" className="flex items-center gap-1">
                   <CreditCard size={14} />
-                  Payment Method
+                  Payment Method <span className="text-destructive">*</span>
                 </Label>
                 <select
-                  id="payment"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  id="paymentMethod"
+                  className={`flex h-10 w-full rounded-md border ${errors.paymentMethod && formSubmitted ? 'border-destructive' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
+                  aria-invalid={errors.paymentMethod && formSubmitted}
+                  aria-required="true"
                 >
                   <option value="">Select payment method</option>
                   <option value="campus_dihrams">Campus Dihrams</option>
                   <option value="falcon_dihrams">Falcon Dihrams</option>
                   <option value="cash">Cash</option>
                 </select>
+                {renderFieldError('paymentMethod')}
               </div>
             </div>
             
@@ -527,12 +576,19 @@ ${buyerMessage}
                 <span className="font-medium block mb-1">What happens next?</span>
                 After submitting, you'll be redirected to a chat with the seller where you can discuss the purchase further.
               </p>
+              <p className="text-xs text-destructive mt-2 flex items-center gap-1">
+                <span className="text-destructive">*</span> Required fields
+              </p>
             </div>
           </div>
           
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowBuyDialog(false)}>Cancel</Button>
-            <Button onClick={handleBuyRequest} size="lg" className="gap-2">
+            <Button 
+              onClick={handleBuyRequest} 
+              size="lg" 
+              className="gap-2"
+            >
               <MessageSquare size={16} />
               Submit Purchase Request
             </Button>
