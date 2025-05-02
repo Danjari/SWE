@@ -21,91 +21,13 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModeToggle } from "@/components/mode-toggle"
+import {flaggedListings} from "@/lib/dummydata"
 
-// Mock data for flagged listings
-const flaggedListings = [
-  {
-    id: "1",
-    title: "Macbook Pro 2023",
-    category: "Electronics",
-    seller: "Alex Johnson",
-    sellerEmail: "alex.j@university.edu",
-    reason: "Suspected stolen item",
-    date: new Date("2023-03-15"),
-    price: "$1,200",
-    description:
-      "Like new MacBook Pro 2023 with M2 chip, 16GB RAM, and 512GB SSD. Only used for 3 months. Comes with original packaging, charger, and AppleCare+ until 2025. Perfect condition with no scratches.",
-    image: "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    location: "Under the Palms",
-    flaggedBy: "Campus Security",
-    flagCount: 3,
-  },
-  {
-    id: "2",
-    title: "iPhone 14 Pro",
-    category: "Electronics",
-    seller: "Jamie Smith",
-    sellerEmail: "jamie.smith@university.edu",
-    reason: "Unrealistic price",
-    date: new Date("2023-03-18"),
-    price: "$300",
-    description:
-      "iPhone 14 Pro, 256GB, Graphite. Minor scratches on screen but works perfectly. Includes charger and case.",
-    image: "/placeholder.svg?height=600&width=600",
-    location: "Library Entrance",
-    flaggedBy: "Admin",
-    flagCount: 2,
-  },
-  {
-    id: "3",
-    title: "Calculus Textbook",
-    category: "Books",
-    seller: "Taylor Wong",
-    sellerEmail: "taylor.w@university.edu",
-    reason: "Counterfeit material",
-    date: new Date("2023-03-20"),
-    price: "$45",
-    description: "Calculus: Early Transcendentals, 8th Edition. Barely used, no highlights or notes.",
-    image: "/placeholder.svg?height=600&width=600",
-    location: "Math Building",
-    flaggedBy: "Professor Davis",
-    flagCount: 1,
-  },
-  {
-    id: "4",
-    title: "Dorm Refrigerator",
-    category: "Appliances",
-    seller: "Jordan Lee",
-    sellerEmail: "jordan.l@university.edu",
-    reason: "Prohibited item",
-    date: new Date("2023-03-22"),
-    price: "$80",
-    description: "Mini fridge, 3.2 cubic feet. Perfect for dorm rooms. Used for one semester only.",
-    image: "/placeholder.svg?height=600&width=600",
-    location: "Dorm C",
-    flaggedBy: "Residence Life",
-    flagCount: 2,
-  },
-  {
-    id: "5",
-    title: "Concert Tickets",
-    category: "Entertainment",
-    seller: "Morgan Chen",
-    sellerEmail: "morgan.c@university.edu",
-    reason: "Potential scalping",
-    date: new Date("2023-03-25"),
-    price: "$150",
-    description: "Two tickets to the upcoming campus concert. Section A, Row 3.",
-    image: "/placeholder.svg?height=600&width=600",
-    location: "Student Union",
-    flaggedBy: "Event Committee",
-    flagCount: 4,
-  },
-]
+
 
 export default function FlaggedListings() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedListing, setSelectedListing] = useState<(typeof flaggedListings)[0] | null>(null)
+  const [selectedListing, setSelectedListing] = useState(flaggedListings[0] || null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [listings, setListings] = useState(flaggedListings)
