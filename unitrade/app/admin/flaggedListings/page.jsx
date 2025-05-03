@@ -370,6 +370,8 @@ import ListingsTable from "@/components/flagged-listings/ListingsTable"
 import DetailsSheet from "@/components/flagged-listings/detailsSheet"
 import RemoveDialog from "@/components/flagged-listings/removeDialog"
 import Loading from "./loading"
+import { createClient } from "@/lib/supabase/client"
+
 
 export default function FlaggedListingsPage() {
   const { listings, setListings, loading } = useFlaggedListings()
@@ -377,6 +379,7 @@ export default function FlaggedListingsPage() {
   const [selected, setSelected] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showRemove, setShowRemove] = useState(false)
+  const supabase = createClient()
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -385,12 +388,28 @@ export default function FlaggedListingsPage() {
     )
   }, [query, listings])
 
-  const handleRemove = (listing) => {
-    setListings((prev) => prev.filter((l) => l.id !== listing.id))
-    setShowRemove(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 3000)
+  const handleRemove = async (listing) => {
+  // 1. Soft‑delete in the DB
+  const { error } = await supabase
+    .from("listings")
+    .update({
+      status: "banned",
+      banned_at: new Date().toISOString(),
+    })
+    .eq("id", listing.id)
+
+  if (error) {
+    console.error("Failed to ban listing:", error)
+    alert("Could not remove listing. Please try again.")
+    return
   }
+
+  // 2. Optimistically update UI
+  setListings((prev) => prev.filter((l) => l.id !== listing.id))
+  setShowRemove(false)
+  setShowSuccess(true)
+  setTimeout(() => setShowSuccess(false), 3000)
+}
 
   if (loading) return <Loading />
 
