@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Eye, Trash2, Search, X, AlertTriangle } from "lucide-react"
 import { format } from "date-fns"
 
@@ -21,32 +21,66 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModeToggle } from "@/components/mode-toggle"
-import {flaggedListings} from "@/lib/dummydata"
+//import {flaggedListings} from "@/lib/dummydata"
+import { createClient } from "@/lib/supabase/client"
+import {Loading} from "./loading"
 
 
 
 export default function FlaggedListings() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedListing, setSelectedListing] = useState(flaggedListings[0] || null)
+  const [selectedListing, setSelectedListing] = useState(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
-  const [listings, setListings] = useState(flaggedListings)
+  const [listings, setListings] = useState([])
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
+  const [loading,setLoading] = useState(true)
 
-  const filteredListings = listings.filter(
-    (listing) =>
-      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.seller.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.reason.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const supabase = createClient()
 
-  const handleRemoveListing = () => {
-    setListings(listings.filter((listing) => listing.id !== selectedListing?.id))
-    setIsRemoveDialogOpen(false)
-    setShowSuccessBanner(true)
-    setTimeout(() => setShowSuccessBanner(false), 3000)
+  useEffect(()=>{
+    async function fetchFlagged(){
+        const {data,error} = await supabase
+        .from("flagged_listings_view")
+        .select(
+            "id, title, category, seller, seller_email, price, description, image, location, reason, date, flag_count"
+        )
+        if (error) {
+            console.error("Supabase fetch error:", error)
+          } else {
+            setListings(data || [])
+          }
+          setLoading(false)
+        }
+    
+        fetchFlagged()
+      }, [])
+  if(loading){
+    <Loading/>
   }
+    
+
+  const normalizedQuery = searchQuery.toLowerCase()
+
+const filteredListings = listings.filter((listing) => {
+  const { title, seller, category, reason } = listing
+
+  return [title, seller, category, reason].some((field) =>
+    field.toLowerCase().includes(normalizedQuery)
+  )
+})
+
+/* ───────────────────────────────
+   Remove handler (front‑end only)
+   ─────────────────────────────── */
+const handleRemoveListing = () => {
+  setListings((prev) =>
+    prev.filter((listing) => listing.id !== selectedListing?.id)
+  )
+  setIsRemoveDialogOpen(false)
+  setShowSuccessBanner(true)
+  setTimeout(() => setShowSuccessBanner(false), 3000)
+}
 
   return (
     <div className="container mx-auto px-4 py-6">
