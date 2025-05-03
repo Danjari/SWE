@@ -30,6 +30,7 @@ export default function useFlaggedListings() {
             flagCount: item.flag_count,
             reason: item.reason,
             flags: item.flags_json,
+            status: item.status || 'flagged'
           }))
         )
       }

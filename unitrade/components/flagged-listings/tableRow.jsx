@@ -19,6 +19,7 @@ export default function Row({ listing, onView, onRemove }) {
       <TableCell className="hidden md:table-cell">
         {format(listing.date, "MMM d, yyyy")}
       </TableCell>
+      <TableCell>{listing.status}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onView}>
