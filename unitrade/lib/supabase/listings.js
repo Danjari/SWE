@@ -29,3 +29,32 @@ export async function banListing(listingId) {
 
   return { success: true }
 }
+
+
+export async function unbanListing(listingId) {
+    const supabase = createClient()
+  
+    const { error, data } = await supabase
+      .from("listings")
+      .update({
+        status: "active",     
+        banned_at: null,
+      })
+      .eq("id", listingId)
+      .select("id")
+      .maybeSingle()
+  
+    if (error) {
+      console.error("unbanListing error:", error)
+      return { success: false, error: error.message }
+    }
+  
+    return { success: true }
+  }
+  
+  
+  
+  
+  
+  
+  
