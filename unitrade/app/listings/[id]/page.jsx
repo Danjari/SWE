@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/use-auth'
 import { Calendar, DollarSign, Clock, MapPin, CreditCard, MessageSquare, Tag, Package, User, Calendar as CalendarIcon, Info, AlertCircle } from 'lucide-react'
+import Report from "@/components/report"
+
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -241,7 +243,7 @@ ${buyerMessage}
           <span>Back to Listings</span>
         </Button>
         
-        {!isCurrentUserSeller && (
+        {/* {!isCurrentUserSeller && (
           <div className="fixed bottom-4 right-4 z-10 md:relative md:bottom-auto md:right-auto md:z-auto">
             <Button 
               size="lg"
@@ -250,7 +252,15 @@ ${buyerMessage}
             >
               Buy Now
             </Button>
+            
           </div>
+        )} */}
+        {!isCurrentUserSeller && (
+          <Report
+            listingId={product.id}
+            listingTitle={product.title}
+            isSeller={isCurrentUserSeller}
+          />
         )}
       </div>
       
