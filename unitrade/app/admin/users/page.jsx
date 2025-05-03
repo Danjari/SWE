@@ -26,7 +26,7 @@ import {users} from "@/lib/dummydata"
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedUser, setSelectedUser] = useState(users[0] | null)
+  const [selectedUser, setSelectedUser] = useState(users[0] || null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false)
   const [userList, setUserList] = useState(users)
