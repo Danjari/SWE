@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/use-auth'
+import { createChat, sendMessage } from '@/lib/chat-service'
 import { Calendar, DollarSign, Clock, MapPin, CreditCard, MessageSquare, Tag, Package, User, Calendar as CalendarIcon, Info, AlertCircle } from 'lucide-react'
 import Report from "@/components/report"
 
@@ -128,15 +129,61 @@ export default function ProductDetailPage() {
 ${buyerMessage}
       `.trim()
       
-      // Close the dialog and redirect to chat
+      // Create a new purchase request in the database
+      const supabase = createClient()
+      const { data: purchaseRequest, error: purchaseError } = await supabase
+        .from('purchase_requests')
+        .insert({
+          listing_id: product.id,
+          buyer_id: user.id,
+          message: buyerMessage,
+          pickup_time: pickupTime,
+          pickup_location: pickupLocation,
+          payment_method: paymentMethod,
+          contact_info: contactInfo,
+          status: 'pending'
+        })
+        .select()
+        .single()
+      
+      if (purchaseError) {
+        throw new Error(`Failed to create purchase request: ${purchaseError.message}`)
+      }
+      
+      // Create or get an existing chat between buyer and seller
+      const { data: chatData, error: chatError } = await createChat(
+        product.id,  // listing ID
+        user.id,     // buyer ID
+        product.seller_id  // seller ID
+      )
+      
+      if (chatError || !chatData) {
+        throw new Error(`Failed to create chat: ${chatError?.message || 'Unknown error'}`)
+      }
+      
+      // Send the purchase request message to the chat
+      const { data: messageData, error: messageError } = await sendMessage(
+        chatData.id,  // chat ID
+        user.id,      // sender ID (buyer)
+        purchaseMessage,
+        purchaseRequest?.id || null // Purchase request ID if available
+      )
+      
+      if (messageError) {
+        console.error('Error sending message:', messageError)
+        // Continue with redirection even if message sending fails
+      }
+      
+      // Close the dialog
       setShowBuyDialog(false)
       
-      // Show confirmation and redirect to chat with the purchase message pre-filled
-      alert('You will now be redirected to chat with the seller')
-      router.push(`/chats?room=${product.id}&message=${encodeURIComponent(purchaseMessage)}`)
+      // Show brief confirmation and redirect to chat
+      setTimeout(() => {
+        router.push(`/messages/${chatData.id}`)
+      }, 500)
     } catch (error) {
-      console.error('Error preparing purchase request:', error)
-      alert('Failed to prepare purchase request: ' + (error.message || 'Unknown error'))
+      console.error('Error processing purchase request:', error)
+      alert('Failed to process purchase request: ' + (error.message || 'Unknown error'))
     }
   }
   

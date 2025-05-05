@@ -22,7 +22,7 @@ export function NavBar() {
     },
     {
       name: 'Chats',
-      href: '/chats',
+      href: '/messages',
       protected: true
     },
     {
