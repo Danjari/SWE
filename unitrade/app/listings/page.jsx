@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '@/components/ui/card'
@@ -503,6 +504,14 @@ export default function ListingsPage() {
                       </div>
                       <CardDescription className="font-semibold text-primary">${listing.price}</CardDescription>
                     </CardHeader>
+                    <div className="relative w-full h-48 overflow-hidden">
+                      <Image
+                        src={listing.image_url || '/placeholder-image.jpg'}
+                        alt={listing.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                     <CardContent className="space-y-3">
                       <p className="text-sm line-clamp-2 text-muted-foreground">
                         {listing.description}
