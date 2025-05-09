@@ -8,27 +8,27 @@ UniTrade is a modern web application built with Next.js and Supabase that allows
 - **Listing Management**: Create, view, and manage product listings
 - **Product Details**: View comprehensive information about products
 - **Buy Requests**: Send purchase requests to sellers
-- **Messaging**: Chat with sellers about products (coming soon)
+- **Messaging**: Chat with sellers about products 
 
 ## Technology Stack
 
 - **Frontend**: Next.js 15.3, React 19, Tailwind CSS
 - **Backend**: Supabase (Authentication, Database, Storage)
 - **UI Components**: Radix UI, shadcn/ui
-- **Deployment**: Vercel (recommended)
+- **Deployment**: Vercel (not yet) 
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ and npm/yarn
-- Supabase account and project
+- Supabase account and project ( for the context of the class, .env keys provided in the delivarable 5 document
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/unitrade.git
+   git clone https://github.com/Danjari/SWE.git
    cd unitrade
    ```
 
@@ -42,8 +42,9 @@ UniTrade is a modern web application built with Next.js and Supabase that allows
 3. Set up environment variables:
    Create a `.env.local` file with the following variables:
    ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   NEXT_PUBLIC_SUPABASE_URL=supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=supabase_service_role_key
    ```
 
 4. Run the development server:
@@ -55,7 +56,7 @@ UniTrade is a modern web application built with Next.js and Supabase that allows
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Database Setup
+## Database Setup ( if you want to use your own keys )
 
 1. Create a new Supabase project
 2. Run the SQL scripts in `lib/db/schema.sql` in the Supabase SQL editor
@@ -69,7 +70,7 @@ UniTrade is a modern web application built with Next.js and Supabase that allows
 3. On the product details page, click "Buy Now" to express interest
 4. Fill in your contact information and a message to the seller
 5. Submit your purchase request
-6. The seller will receive your request and can contact you directly
+6. The seller will receive your  message request and can contact you directly
 
 ### Selling Products
 
@@ -87,9 +88,6 @@ UniTrade is a modern web application built with Next.js and Supabase that allows
 - `/lib`: Utility functions and services
 - `/public`: Static assets
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
