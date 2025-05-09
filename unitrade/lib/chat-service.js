@@ -101,6 +101,11 @@ export async function sendMessage(chatId, senderId, content, purchaseRequestId =
  * @returns {Promise<{ data: Array, error: object }>} - The list of chats or error
  */
 export async function getUserChats(userId) {
+  // Validate userId parameter
+  if (!userId) {
+    return { data: null, error: 'User ID is required' };
+  }
+  
   const supabase = createClient();
   
   // Get chats where user is either buyer or seller
@@ -129,6 +134,11 @@ export async function getUserChats(userId) {
  * @returns {Promise<{ data: object, error: object }>} - The chat data or error
  */
 export async function getChatById(chatId) {
+  // Validate chatId parameter
+  if (!chatId) {
+    return { data: null, error: 'Chat ID is required' };
+  }
+  
   const supabase = createClient();
   
   const { data, error } = await supabase
@@ -144,7 +154,7 @@ export async function getChatById(chatId) {
     .single();
   
   if (error) {
-    console.error('Error fetching chat:', error);
+    console.error('Error fetching chat by ID:', error);
   }
   
   return { data, error };
@@ -156,6 +166,11 @@ export async function getChatById(chatId) {
  * @returns {Promise<{ data: Array, error: object }>} - The list of messages or error
  */
 export async function getChatMessages(chatId) {
+  // Validate chatId parameter
+  if (!chatId) {
+    return { data: null, error: 'Chat ID is required' };
+  }
+  
   const supabase = createClient();
   
   const { data, error } = await supabase
@@ -182,6 +197,15 @@ export async function getChatMessages(chatId) {
  * @returns {Promise<{ data: Array, error: object }>} - Result of the operation
  */
 export async function markChatAsRead(chatId, userId) {
+  // Validate parameters
+  if (!chatId) {
+    return { data: null, error: 'Chat ID is required' };
+  }
+  
+  if (!userId) {
+    return { data: null, error: 'User ID is required' };
+  }
+  
   const supabase = createClient();
   
   const { data, error } = await supabase

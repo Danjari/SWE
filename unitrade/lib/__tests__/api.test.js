@@ -1,40 +1,62 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client';
 import { 
   fetchUserAndListings, 
   fetchUserListings, 
   fetchProductDetails,
   banListing,
   unbanListing 
-} from '../api'
+} from '../api';
 
-// Mock Supabase client
-const mockSupabaseQuery = {
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  is: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  single: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn().mockReturnThis(),
-  update: jest.fn().mockReturnThis(),
-}
-
-const mockGetUser = jest.fn()
-
-jest.mock('@/lib/supabase/client', () => ({
-  createClient: jest.fn(() => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-    from: jest.fn(() => mockSupabaseQuery),
-  })),
-}))
+// The mocking is now handled in jest.setup.js
 
 describe('API Functions', () => {
-  let mockSupabase
+  // Access the mocked functions
+  let mockFrom;
+  let mockGetUser;
+  let mockSelect;
+  let mockEq;
+  let mockIs;
+  let mockOrder;
+  let mockSingle;
+  let mockMaybeSingle;
+  let mockUpdate;
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockSupabase = createClient()
+    jest.clearAllMocks();
+    
+    // Create a fresh mock for each test
+    const mockQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      single: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+    };
+    
+    // Save references to the mock functions
+    mockSelect = mockQueryBuilder.select;
+    mockEq = mockQueryBuilder.eq;
+    mockIs = mockQueryBuilder.is;
+    mockOrder = mockQueryBuilder.order;
+    mockSingle = mockQueryBuilder.single;
+    mockMaybeSingle = mockQueryBuilder.maybeSingle;
+    mockUpdate = mockQueryBuilder.update;
+    
+    // Setup the from mock to return our query builder
+    mockFrom = jest.fn().mockReturnValue(mockQueryBuilder);
+    
+    // Setup the getUser mock
+    mockGetUser = jest.fn();
+    
+    // Override the createClient mock for this test suite
+    createClient.mockImplementation(() => ({
+      auth: {
+        getUser: mockGetUser,
+      },
+      from: mockFrom
+    }));
   })
 
   describe('fetchUserAndListings', () => {
@@ -50,13 +72,18 @@ describe('API Functions', () => {
         error: null 
       })
 
-      mockSupabaseQuery.order.mockResolvedValue({
+      mockOrder.mockResolvedValue({
         data: mockListings,
         error: null
       })
 
       const result = await fetchUserAndListings()
 
+      expect(mockFrom).toHaveBeenCalledWith('listings')
+      expect(mockEq).toHaveBeenCalledWith('status', 'active')
+      expect(mockIs).toHaveBeenCalledWith('deleted_at', null)
+      expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false })
+      
       expect(result).toEqual({
         user: mockUser,
         listings: mockListings,
@@ -88,7 +115,7 @@ describe('API Functions', () => {
         error: null 
       })
 
-      mockSupabaseQuery.order.mockResolvedValue({
+      mockOrder.mockResolvedValue({
         data: null,
         error: mockError
       })
@@ -116,18 +143,69 @@ describe('API Functions', () => {
         error: null 
       })
 
-      mockSupabaseQuery.order.mockResolvedValue({
+      mockOrder.mockResolvedValue({
         data: mockListings,
         error: null
       })
 
       const result = await fetchUserListings()
 
+      expect(mockFrom).toHaveBeenCalledWith('listings')
+      expect(mockEq).toHaveBeenCalledWith('seller_id', mockUser.id)
+      expect(mockIs).toHaveBeenCalledWith('deleted_at', null)
+      expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false })
+      
       expect(result).toEqual({
         user: mockUser,
         listings: mockListings,
         error: null
       })
+    })
+
+    it('handles user not found error', async () => {
+      mockGetUser.mockResolvedValue({ 
+        data: { user: null }, 
+        error: { message: 'User not found' }
+      })
+
+      const result = await fetchUserListings()
+
+      expect(result).toEqual({
+        user: null,
+        listings: [],
+        error: 'User not found'
+      })
+    })
+
+    it('handles listings fetch error', async () => {
+      const mockUser = { id: '123', email: 'test@example.com' }
+      const mockError = { message: 'Failed to fetch user listings' }
+
+      mockGetUser.mockResolvedValue({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
+
+      mockOrder.mockResolvedValue({
+        data: null,
+        error: mockError
+      })
+
+      // Mock console.error to prevent test output clutter
+      const originalConsoleError = console.error
+      console.error = jest.fn()
+
+      const result = await fetchUserListings()
+
+      expect(console.error).toHaveBeenCalledWith(mockError)
+      expect(result).toEqual({
+        user: mockUser,
+        listings: [],
+        error: mockError.message
+      })
+
+      // Restore console.error
+      console.error = originalConsoleError
     })
   })
 
@@ -143,7 +221,7 @@ describe('API Functions', () => {
         name: 'Test Seller'
       }
 
-      mockSupabaseQuery.single
+      mockSingle
         .mockResolvedValueOnce({
           data: mockProduct,
           error: null
@@ -155,6 +233,8 @@ describe('API Functions', () => {
 
       const result = await fetchProductDetails('123')
 
+      expect(mockFrom).toHaveBeenCalledWith('listings')
+      expect(mockEq).toHaveBeenCalledWith('id', '123')
       expect(result).toEqual({
         product: mockProduct,
         seller: mockSeller,
@@ -175,7 +255,7 @@ describe('API Functions', () => {
     it('handles product fetch error', async () => {
       const mockError = { message: 'Failed to fetch product' }
 
-      mockSupabaseQuery.single.mockResolvedValue({
+      mockSingle.mockResolvedValue({
         data: null,
         error: mockError
       })
@@ -188,24 +268,53 @@ describe('API Functions', () => {
         error: mockError.message
       })
     })
+    
+    it('handles unexpected errors in try/catch block', async () => {
+      // Mock console.error to prevent test output clutter
+      const originalConsoleError = console.error
+      console.error = jest.fn()
+      
+      // Force an error by making the from method throw an exception
+      mockFrom.mockImplementationOnce(() => {
+        throw new Error('Unexpected error')
+      })
+      
+      const result = await fetchProductDetails('123')
+      
+      expect(console.error).toHaveBeenCalled()
+      expect(result).toEqual({
+        product: null,
+        seller: null,
+        error: 'Unexpected error'
+      })
+      
+      // Restore console.error
+      console.error = originalConsoleError
+    })
   })
 
   describe('banListing', () => {
     it('successfully bans a listing', async () => {
-      mockSupabaseQuery.maybeSingle.mockResolvedValue({
+      mockMaybeSingle.mockResolvedValue({
         data: { id: '123' },
         error: null
       })
 
       const result = await banListing('123')
 
+      expect(mockFrom).toHaveBeenCalledWith('listings')
+      expect(mockUpdate).toHaveBeenCalledWith({
+        status: 'banned',
+        banned_at: expect.any(String)
+      })
+      expect(mockEq).toHaveBeenCalledWith('id', '123')
       expect(result).toEqual({ success: true })
     })
 
     it('handles ban error', async () => {
       const mockError = { message: 'Failed to ban listing' }
 
-      mockSupabaseQuery.maybeSingle.mockResolvedValue({
+      mockMaybeSingle.mockResolvedValue({
         data: null,
         error: mockError
       })
@@ -217,24 +326,49 @@ describe('API Functions', () => {
         error: mockError.message
       })
     })
+    
+    it('handles case when no data is returned but operation succeeds', async () => {
+      // Mock console.log to prevent test output clutter
+      const originalConsoleLog = console.log
+      console.log = jest.fn()
+      
+      mockMaybeSingle.mockResolvedValue({
+        data: null,  // No data returned
+        error: null  // But no error either
+      })
+
+      const result = await banListing('123')
+
+      expect(console.log).toHaveBeenCalledWith('this is the received data, ', null)
+      expect(result).toEqual({ success: true })
+      
+      // Restore console.log
+      console.log = originalConsoleLog
+    })
   })
 
   describe('unbanListing', () => {
     it('successfully unbans a listing', async () => {
-      mockSupabaseQuery.maybeSingle.mockResolvedValue({
+      mockMaybeSingle.mockResolvedValue({
         data: { id: '123' },
         error: null
       })
 
       const result = await unbanListing('123')
 
+      expect(mockFrom).toHaveBeenCalledWith('listings')
+      expect(mockUpdate).toHaveBeenCalledWith({
+        status: 'active',
+        banned_at: null
+      })
+      expect(mockEq).toHaveBeenCalledWith('id', '123')
       expect(result).toEqual({ success: true })
     })
 
     it('handles unban error', async () => {
       const mockError = { message: 'Failed to unban listing' }
 
-      mockSupabaseQuery.maybeSingle.mockResolvedValue({
+      mockMaybeSingle.mockResolvedValue({
         data: null,
         error: mockError
       })
