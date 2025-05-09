@@ -2,194 +2,229 @@
 
 import { useState } from 'react'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  DialogDescription
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { createClient } from '@/lib/supabase/client'
-import { Description } from '@radix-ui/react-dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { validateListingForm, prepareListingPayload } from '@/lib/validations/listing'
+import { uploadListingImage, upsertUser, createListing } from '@/lib/supabase/listing-operations'
+import { toast } from 'sonner'
 
 const CATEGORY_OPTIONS = ['Books', 'Electronics', 'Clothing', 'Other']
-const CONDITION_OPTIONS = ['Any', 'new', 'used']
+const CONDITION_OPTIONS = ['new', 'used']
 
 export default function AddListingForm({ userId, userEmail, userCreatedAt, onListingCreated }) {
-  const [openForm, setOpenForm] = useState(false)
-  const [newListing, setNewListing] = useState({ title: '', description: '', price: '', category: '', condition: '' })
+  const [isOpen, setIsOpen] = useState(false)
+  const [newListing, setNewListing] = useState({
+    title: '',
+    description: '',
+    price: '',
+    category: '',
+    condition: '',
+    file: null,
+  })
   const [errors, setErrors] = useState({})
-  const [file, setFile] = useState(null)
-  const MAX_FILE_SIZE_MB = 5
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleAddListing = async (e) => {
-    e.preventDefault()
-  
-    const newErrors = {}
-    if (!newListing.title || newListing.title.trim().length < 3) {
-      newErrors.title = 'Title must be at least 3 characters long'
-    }
-    if (!newListing.price || isNaN(newListing.price) || parseFloat(newListing.price) <= 0) {
-      newErrors.price = 'Price must be a valid number greater than 0'
-    }
-    if (!file) {
-      newErrors.file = 'You must upload a JPEG or PNG image'
-    } else if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      newErrors.file = 'Only JPEG or PNG files are allowed'
-    } else if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      newErrors.file = 'File must be less than 5MB'
-    }
-  
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
-  
-    const supabase = createClient()
-  
-    // Upload image
-    const filename = `${userId}-${Date.now()}-${file.name}`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('listing-images')
-      .upload(filename, file)
-  
-    if (uploadError) {
-      alert('Error uploading image: ' + uploadError.message)
-      return
-    }
-  
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('listing-images')
-      .getPublicUrl(filename)
-  
-    const imageUrl = urlData?.publicUrl
-  
-    // Upsert user (same as before)
-    await supabase.from('users').upsert({
-      id: userId,
-      email: userEmail,
-      created_at: userCreatedAt,
-    })
-  
-    const payload = {
-      ...newListing,
-      price: parseFloat(newListing.price),
-      seller_id: userId,
-      contact_email: userEmail,
-      image_url: imageUrl,
-      status: 'active',
-    }
-  
-    const { data, error } = await supabase.from('listings').insert(payload).select().single()
-    if (error) {
-      alert('Error creating listing: ' + error.message)
-    } else {
-      onListingCreated(data)
-      setNewListing({ title: '', description: '', price: '', category: '', condition: '' })
-      setFile(null)
-      setOpenForm(false)
-      setErrors({})
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setNewListing((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: null }))
     }
   }
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setNewListing((prev) => ({ ...prev, file }))
+      // Clear error when user selects a file
+      if (errors.file) {
+        setErrors((prev) => ({ ...prev, file: null }))
+      }
+    }
+  }
+
+  const handleSelectChange = (name, value) => {
+    setNewListing((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user makes a selection
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: null }))
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setErrors({})
+
+    try {
+      // Validate form
+      const validationErrors = validateListingForm(newListing)
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors)
+        setIsSubmitting(false)
+        return
+      }
+
+      // Upload image
+      const imageUrl = await uploadListingImage(newListing.file, userId)
+    
+      // Upsert user
+      await upsertUser(userId, userEmail, userCreatedAt)
+    
+      // Create listing
+      const payload = prepareListingPayload(newListing, userId, userEmail, imageUrl)
+      const data = await createListing(payload)
+      
+      onListingCreated?.(data)
+      setNewListing({
+        title: '',
+        description: '',
+        price: '',
+        category: '',
+        condition: '',
+        file: null,
+      })
+      setErrors({})
+      setIsOpen(false)
+      toast.success('Listing created successfully!')
+    } catch (error) {
+      setErrors({ submit: `An unexpected error occurred: ${error.message}` })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const renderError = (error) => {
+    if (!error) return null
+    return (
+      <p className="text-sm text-red-500 mt-1" role="alert">
+        {error}
+      </p>
+    )
+  }
+
   return (
-    <Dialog open={openForm} onOpenChange={setOpenForm}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>Add New Listing</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Listing</DialogTitle>
+          <DialogTitle>Add New Listing</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new listing.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleAddListing} className="grid gap-4 mt-4">
-          <div className="grid gap-2">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
+              name="title"
               value={newListing.title}
-              onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
-              required
+              onChange={handleInputChange}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? 'title-error' : undefined}
             />
-            {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
+            {renderError(errors.title)}
           </div>
 
-          <div className="grid gap-2">
+          <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Input
+            <Textarea
               id="description"
+              name="description"
               value={newListing.description}
-              onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
-              required
+              onChange={handleInputChange}
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? 'description-error' : undefined}
             />
+            {renderError(errors.description)}
           </div>
 
-          <div className="grid gap-2">
+          <div className="space-y-2">
             <Label htmlFor="price">Price</Label>
             <Input
               id="price"
+              name="price"
               type="number"
               step="0.01"
               value={newListing.price}
-              onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
-              required
+              onChange={handleInputChange}
+              aria-invalid={!!errors.price}
+              aria-describedby={errors.price ? 'price-error' : undefined}
             />
-            {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
+            {renderError(errors.price)}
           </div>
 
-          <div className="flex gap-4">
-            <div className="grid gap-2 flex-1">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={newListing.category}
-                onValueChange={(value) => setNewListing({ ...newListing, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2 flex-1">
-              <Label htmlFor="condition">Condition</Label>
-              <Select
-                value={newListing.condition}
-                onValueChange={(value) => setNewListing({ ...newListing, condition: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDITION_OPTIONS.filter(c => c !== 'Any').map((condition) => (
-                    <SelectItem key={condition} value={condition}>
-                      {condition}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={newListing.category}
+              onValueChange={(value) => handleSelectChange('category', value)}
+            >
+              <SelectTrigger id="category" aria-invalid={!!errors.category}>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {renderError(errors.category)}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="image">Upload Image</Label>
+
+          <div className="space-y-2">
+            <Label htmlFor="condition">Condition</Label>
+            <Select
+              value={newListing.condition}
+              onValueChange={(value) => handleSelectChange('condition', value)}
+            >
+              <SelectTrigger id="condition" aria-invalid={!!errors.condition}>
+                <SelectValue placeholder="Select a condition" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONDITION_OPTIONS.map((condition) => (
+                  <SelectItem key={condition} value={condition}>
+                    {condition}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {renderError(errors.condition)}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="file">Upload Image</Label>
             <p className="text-sm text-muted-foreground -mt-1 mb-2">
-            Only JPEG/PNG under 5MB allowed
+              Only JPEG/PNG under 5MB allowed
             </p>
             <Input
-                id="image"
-                type="file"
-                accept="image/jpeg, image/png"
-                onChange={(e) => setFile(e.target.files?.[0])}
+              id="file"
+              type="file"
+              accept="image/jpeg,image/png"
+              onChange={handleFileChange}
+              aria-invalid={!!errors.file}
+              aria-describedby={errors.file ? 'file-error' : undefined}
             />
-            {errors.file && <p className="text-sm text-red-500">{errors.file}</p>}
-            </div>
+            {renderError(errors.file)}
+          </div>
 
-          <Button type="submit" disabled={!userId}>Create Listing</Button>
+          {renderError(errors.submit)}
+
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating...' : 'Create Listing'}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
