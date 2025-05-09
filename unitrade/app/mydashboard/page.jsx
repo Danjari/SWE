@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchUserListings } from '@/lib/api'
 
 import { Button } from '@/components/ui/button'
 
@@ -22,31 +23,33 @@ export default function ListingsPage() {
   const [userCreatedAt,setUserCreatedAt] =useState(null)
   const supabase = createClient()
   useEffect(() => {
-   
-
-    const fetchUserAndListings = async () => {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData?.user) {
-        alert('Error fetching user: ' + userError?.message)
-        return
+    const loadUserAndListings = async () => {
+      try {
+        const { user, listings, error } = await fetchUserListings()
+        
+        if (error) {
+          console.error(error)
+          if (!user) {
+            alert('Error fetching user: ' + error)
+            return
+          }
+        }
+        
+        if (user) {
+          setUserId(user.id)
+          setUserEmail(user.email)
+          setUserCreatedAt(user.created_at)
+        }
+        
+        setListings(listings || [])
+      } catch (err) {
+        console.error('Error loading data:', err)
+      } finally {
+        setLoading(false)
       }
-      setUserId(userData.user.id)
-      setUserEmail(userData.user.email)
-      setUserCreatedAt(userData.user.created_at)
-
-      const { data, error } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('seller_id', userData.user.id) 
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-
-      if (error) console.error(error)
-      else setListings(data)
-      setLoading(false)
     }
 
-    fetchUserAndListings()
+    loadUserAndListings()
   }, [])
   
 
