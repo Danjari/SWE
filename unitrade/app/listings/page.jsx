@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { fetchUserAndListings } from '@/lib/api'
 import Image from 'next/image'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -93,34 +93,34 @@ export default function ListingsPage() {
   const [activeFilterCount, setActiveFilterCount] = useState(0)
   
   useEffect(() => {
-    const supabase = createClient()
-
-    const fetchUserAndListings = async () => {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData?.user) {
-        alert('Error fetching user: ' + userError?.message)
-        return
+    const loadUserAndListings = async () => {
+      try {
+        const { user, listings, error } = await fetchUserAndListings()
+        
+        if (error) {
+          console.error(error)
+          if (!user) {
+            alert('Error fetching user: ' + error)
+            return
+          }
+        }
+        
+        if (user) {
+          setUserId(user.id)
+          setUserEmail(user.email)
+          setUserCreatedAt(user.created_at)
+        }
+        
+        setListings(listings)
+        setFilteredListings(listings)
+      } catch (err) {
+        console.error('Error loading data:', err)
+      } finally {
+        setLoading(false)
       }
-      setUserId(userData.user.id)
-      setUserEmail(userData.user.email)
-      setUserCreatedAt(userData.user.created_at)
-
-      const { data, error } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('status', 'active')         
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-
-      if (error) console.error(error)
-      else {
-        setListings(data)
-        setFilteredListings(data)
-      }
-      setLoading(false)
     }
 
-    fetchUserAndListings()
+    loadUserAndListings()
   }, [])
   
   useEffect(() => {

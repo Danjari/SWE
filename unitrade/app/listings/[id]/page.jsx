@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchProductDetails } from '@/lib/api'
 import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -52,36 +53,23 @@ export default function ProductDetailPage() {
   }, [buyerMessage, contactInfo, pickupTime, pickupLocation, paymentMethod, formSubmitted])
 
   useEffect(() => {
-    const fetchProductDetails = async () => {
+    const loadProductDetails = async () => {
       setLoading(true)
-      const supabase = createClient()
       
       try {
-        // Fetch the product details
-        const { data: productData, error: productError } = await supabase
-          .from('listings')
-          .select('*')
-          .eq('id', params.id)
-          .single()
+        const { product, seller, error } = await fetchProductDetails(params.id)
         
-        if (productError) throw productError
+        if (error) {
+          setError(error)
+          return
+        }
         
-        setProduct(productData)
-        
-        // Fetch seller information
-        if (productData.seller_id) {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', productData.seller_id)
-            .single()
-          
-          if (!userError) {
-            setSellerData(userData)
-          }
+        setProduct(product)
+        if (seller) {
+          setSellerData(seller)
         }
       } catch (error) {
-        console.error('Error fetching product:', error)
+        console.error('Error loading product details:', error)
         setError(error.message || 'Failed to load product details')
       } finally {
         setLoading(false)
@@ -89,7 +77,7 @@ export default function ProductDetailPage() {
     }
     
     if (params.id) {
-      fetchProductDetails()
+      loadProductDetails()
     }
   }, [params.id])
 
