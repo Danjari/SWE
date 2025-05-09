@@ -1,89 +1,76 @@
--- Users table (managed by Supabase Auth but extended with our custom fields)
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT,
-  username TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Create chats table
+CREATE TABLE public.chats (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  listing_id uuid NOT NULL,
+  buyer_id uuid NOT NULL,
+  seller_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL,
+  deleted_at timestamp with time zone NULL,
+  CONSTRAINT chats_pkey PRIMARY KEY (id),
+  CONSTRAINT chats_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id),
+  CONSTRAINT chats_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.users(id),
+  CONSTRAINT chats_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.users(id)
 );
+CREATE INDEX IF NOT EXISTS idx_chats_listing_id ON public.chats USING btree (listing_id);
+CREATE INDEX IF NOT EXISTS idx_chats_buyer_id ON public.chats USING btree (buyer_id);
+CREATE INDEX IF NOT EXISTS idx_chats_seller_id ON public.chats USING btree (seller_id);
 
--- Listings table for products
-CREATE TABLE IF NOT EXISTS listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  category TEXT,
-  condition TEXT,
-  seller_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'active',
-  contact_email TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  deleted_at TIMESTAMP WITH TIME ZONE
+-- Create messages table
+CREATE TABLE public.messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  chat_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  read_at timestamp with time zone NULL,
+  deleted_at timestamp with time zone NULL,
+  purchase_request_id uuid NULL,
+  CONSTRAINT messages_pkey PRIMARY KEY (id),
+  CONSTRAINT messages_chat_id_fkey FOREIGN KEY (chat_id) REFERENCES public.chats(id),
+  CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
+  CONSTRAINT messages_purchase_request_id_fkey FOREIGN KEY (purchase_request_id) REFERENCES public.purchase_requests(id)
 );
+CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON public.messages USING btree (chat_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages USING btree (sender_id);
 
--- Purchase requests table
-CREATE TABLE IF NOT EXISTS purchase_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  listing_id UUID REFERENCES listings(id) ON DELETE CASCADE,
-  buyer_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  seller_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'pending',
-  buyer_message TEXT,
-  buyer_contact TEXT,
-  pickup_time TIMESTAMP WITH TIME ZONE,
-  pickup_location TEXT,
-  payment_method TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Create listings table
+CREATE TABLE public.listings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  seller_id uuid NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL,
+  price numeric(10,2) NOT NULL,
+  category text NOT NULL,
+  condition text NOT NULL,
+  image_url text NOT NULL DEFAULT ''::text,
+  status text NOT NULL DEFAULT 'active',
+  contact_email text NOT NULL,
+  contact_phone text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL,
+  deleted_at timestamp with time zone NULL,
+  CONSTRAINT listings_pkey PRIMARY KEY (id),
+  CONSTRAINT listings_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.users(id)
 );
+CREATE INDEX IF NOT EXISTS idx_listings_seller_id ON public.listings USING btree (seller_id);
 
--- Email notifications table
-CREATE TABLE IF NOT EXISTS email_notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  to_email TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  content TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  sent_at TIMESTAMP WITH TIME ZONE
+-- Create purchase_requests table
+CREATE TABLE public.purchase_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  listing_id uuid NOT NULL,
+  buyer_id uuid NOT NULL,
+  message text NOT NULL,
+  contact_info text NOT NULL,
+  pickup_time timestamp with time zone NOT NULL,
+  pickup_location text NOT NULL,
+  payment_method text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL,
+  CONSTRAINT purchase_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT purchase_requests_listing_id_fkey FOREIGN KEY (listing_id) REFERENCES public.listings(id),
+  CONSTRAINT purchase_requests_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.users(id)
 );
-
--- Enable Row Level Security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE purchase_requests ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies for users
-CREATE POLICY "Public users are viewable by everyone" ON users
-  FOR SELECT USING (true);
-
-CREATE POLICY "Users can update their own record" ON users
-  FOR UPDATE USING (auth.uid() = id);
-
--- Create RLS policies for listings
-CREATE POLICY "Listings are viewable by everyone" ON listings
-  FOR SELECT USING (deleted_at IS NULL);
-
-CREATE POLICY "Users can create their own listings" ON listings
-  FOR INSERT WITH CHECK (auth.uid() = seller_id);
-
-CREATE POLICY "Users can update their own listings" ON listings
-  FOR UPDATE USING (auth.uid() = seller_id);
-
-CREATE POLICY "Users can delete their own listings" ON listings
-  FOR DELETE USING (auth.uid() = seller_id);
-
--- Create RLS policies for purchase requests
-CREATE POLICY "Users can view purchase requests they are involved in" ON purchase_requests
-  FOR SELECT USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
-
-CREATE POLICY "Users can create purchase requests" ON purchase_requests
-  FOR INSERT WITH CHECK (auth.uid() = buyer_id);
-
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS listings_seller_id_idx ON listings(seller_id);
-CREATE INDEX IF NOT EXISTS purchase_requests_listing_id_idx ON purchase_requests(listing_id);
-CREATE INDEX IF NOT EXISTS purchase_requests_buyer_id_idx ON purchase_requests(buyer_id);
-CREATE INDEX IF NOT EXISTS purchase_requests_seller_id_idx ON purchase_requests(seller_id); 
+CREATE INDEX IF NOT EXISTS idx_purchase_requests_listing_id ON public.purchase_requests USING btree (listing_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_requests_buyer_id ON public.purchase_requests USING btree (buyer_id);
